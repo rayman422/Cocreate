@@ -3,6 +3,8 @@ import { prisma } from '@/server/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/server/auth';
 import { z } from 'zod';
+import { isProjectMember, isProjectOwner } from '@/lib/authz';
+import { notifyProjectMembers } from '@/lib/notify';
 
 const CreateTaskSchema = z.object({
 	title: z.string().min(2),
@@ -20,6 +22,10 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
 	const project = await prisma.project.findUnique({ where: { slug: params.slug } });
 	if (!project) return new NextResponse('Not found', { status: 404 });
 
+	const isMember = await isProjectMember(session.user.id, project.id);
+	const isOwner = await isProjectOwner(session.user.id, project.id);
+	if (!isMember && !isOwner) return new NextResponse('Forbidden', { status: 403 });
+
 	const task = await prisma.task.create({
 		data: {
 			projectId: project.id,
@@ -27,5 +33,6 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
 			description: parsed.data.description ?? null
 		}
 	});
+	await notifyProjectMembers(project.id, 'TASK_CREATED', { projectId: project.id, taskId: task.id, title: task.title }, session.user.id);
 	return NextResponse.json(task, { status: 201 });
 }
