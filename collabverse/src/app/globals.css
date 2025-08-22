@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+	--bg: 248 248 250;
+	--fg: 15 23 42;
+}
+
+html, body {
+	height: 100%;
+}
+
+body {
+	background-color: rgb(var(--bg));
+	color: rgb(var(--fg));
+}
